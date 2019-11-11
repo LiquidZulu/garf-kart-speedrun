@@ -26,7 +26,8 @@ const config = {
   prefix: '!sr'
 }
 
-var ld;
+var gk;
+var fr;
 
 client.on('ready', () => {
   console.log('I am ready!');
@@ -35,12 +36,21 @@ client.on('ready', () => {
   var guild = client.guilds.get('483679588627644417');
   
   const leaderboard = require('./leaderboard.js');
-  ld = new leaderboard({
+
+  gk = new leaderboard({
+    guild: guild
+  });
+
+  fr = new leaderboard({
     guild: guild,
+    game:  `lde3rpj6`
   });
   
   setInterval(() => {
-    ld.update({
+    gk.update({
+      guild: guild
+    }, console.log)
+    fr.update({
       guild: guild
     }, console.log)
   }, 1000*60*10)
@@ -58,7 +68,10 @@ client.on('message', async msg => {
         if(msg.author.id === '293462954240638977'){
           
           msg.channel.send('initiating\n\n')
-          ld.update({
+          gk.update({
+            guild: msg.channel.guild,
+          },() => {})
+          fr.update({
             guild: msg.channel.guild,
           },() => {})
         }
@@ -81,7 +94,10 @@ client.on('message', async msg => {
           var ifRole = (roles.find(i => i.name.toLowerCase() === cmsg[2].toLowerCase()) !== undefined && allowedRoles.find(i => {if( i.toLowerCase() === cmsg[2].toLowerCase()) return true}) !== undefined);
           
           if(cmsg[2].toLowerCase() === 'runners'){
-            if(ifRole && ld.verify(`${msg.author.tag}`)){
+            if(
+              ( ifRole && gk.verify(`${msg.author.tag}`) ) ||
+              ( ifRole && fr.verify(`${msg.author.tag}`) )
+            ){
               msg.guild.members.find('id', msg.author.id).addRole(roles.find(i => i.name.toLowerCase() === cmsg[2].toLowerCase()).id)
             }
           }else{
@@ -131,21 +147,90 @@ client.on('message', async msg => {
         
         
       case `${config.prefix} runners`:
-        try{
-          var notNullRunners = [];
-          for(var runner of ld.runners.Discords){
-            if(runner !== null)notNullRunners.push(runner)
-          }
-          msg.channel.send(notNullRunners)
-        }catch(e){
-          console.error(e);
-          msg.channel.send('Error: '+e);
-        }
+        msg.channel.send(`A list of runners can be found here: https://garf-kart-speedrun.glitch.me/runners`);
       break;
     }
   }catch(e){
   }
 })
+
+function runnerlist(){
+
+  try{
+    var gkrun = [];
+    for(var runner of gk.runners.Discords){
+      if(runner !== null)gkrun.push(runner)
+    }
+    var frrun = [];
+    for(var runner of gk.runners.Discords){
+      if(runner !== null)frrun.push(runner)
+    }
+
+    let rows = (() => {
+      let r = '';
+      let runners = [];
+
+      for(let runner of gkrun.sort()){
+        runners.push(
+          {
+            name: runner,
+            gk:   true,
+            fr:   false
+          }
+        )
+      }
+
+      for(let runner of frrun.sort()){
+        let therunner = {
+          name: runner,
+          gk:   false,
+          fr:   true
+        }
+        let found = false;
+
+        for(let i=0; i<runners.length; i++){
+          if(runners[i].name = therunner.name){
+            runners[i].fr = true;
+            i = runners.length
+          }
+        }
+        if(!found){
+          runners.push(therunner)
+        }
+      }
+
+      for(let runner of runners){
+        r = `${r}\n<tr><th>${runner.name}</th><th>${runner.gk}</th><th>${runner.fr}</th></tr>`
+      }
+
+      return r
+    })()
+
+    return `
+<!DOCTYPE html>
+<html>
+
+    <head>
+    </head>
+
+    <body>
+
+      <table>
+        <tr>
+          <th>Runner Name</th>
+          <th>Garfield Kart</th>
+          <th>Garfield Kart: Furious Racing</th>
+        </tr>${rows}
+      </table>
+
+    </body>
+
+</html>`
+  }catch(e){
+    console.error(e);
+    return ('Error: '+e);
+  }
+}
 
 
 
@@ -154,6 +239,7 @@ client.on('message', async msg => {
 const got = require('got');
 
 app.get('/run', (req, res) => res.send('ok glitch let me run my project lol'));
+app.get('/runners', (req, res) => res.send(runnerlist()));
 
 app.listen(process.env.PORT, () => console.log('Example app listening on port whatever!'));
 
